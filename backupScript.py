@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import datetime
 import json
-import os
+from subprocess import Popen
 
 
 def load():
@@ -16,14 +16,22 @@ def save(data):
 
 
 if __name__ == "__main__":
-    confData = load()
-    DESTINATION = confData["d"]
-    TARGETS = confData["targets"]
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    try:
+        confData = load()
+        DESTINATION = confData["d"]
+        TARGETS = confData["targets"]
+        today = datetime.date.today().strftime("%Y-%m-%d")
+        if DESTINATION[-1] != '/':
+            DESTINATION += '/'
+        p = Popen(['tar', '-czPf', "{0}BT~{1}.tgz".format(DESTINATION, today), TARGETS])
+        p.wait()
+        confData["latest"] = today
+        save(confData)
+        exit(0)
+    except Exception as e:
+        with open("btError.log", "w+") as errFile:
+            print(e)
+        exit(2)
 
-    #TODO: Get the backup
-
-    confData["latest"] = today
-    save(confData)
 
 
