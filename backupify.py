@@ -14,11 +14,11 @@ class UserLoop(cmd.Cmd):
     """Class for dynamic interpreter of user"""
     def __init__(self):
         super(UserLoop, self).__init__()
-        self.prompt = "BackupTully> "
-        self.intro = "Welcome to BackupTully {}!\nPlease type help or ? to see available commands and their " \
-                     "settings.\nType documentation for further information about BackupTully".format(VERSION)
+        self.prompt = "Backupify> "
+        self.intro = "Welcome to Backupify {}!\nPlease type help or ? to see available commands and their " \
+                     "settings.\nType documentation for further information about Backupify".format(VERSION)
         self.macros = {"@daily", "@weekly", "@monthly"}
-        if os.path.exists("btConf.json"):
+        if os.path.exists("backupifyConf.json"):
             self.load()
         else:
             self.period = "@daily"
@@ -29,14 +29,14 @@ class UserLoop(cmd.Cmd):
             if not os.path.isdir(self.destination):
                 os.makedirs(self.destination)
             with open("/etc/anacrontab", "r") as tab:
-                if "BackupTully" in tab.read():
+                if "Backupify" in tab.read():
                     loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
-                    newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, loc)
-                    p = Popen(['sed', '-i', "s/.*BackupTully.*/{}/g".format(newEntry), "/etc/anacrontab"])
+                    newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, loc)
+                    p = Popen(['sed', '-i', "s/.*Backupify.*/{}/g".format(newEntry), "/etc/anacrontab"])
                     p.wait()
                 else:
                     with open("/etc/anacrontab", "a") as anacron:
-                        newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, os.getcwd() + "/backupScript.py")
+                        newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, os.getcwd() + "/backupScript.py")
                         anacron.write(newEntry + '\n')
             self.save()
             print("First time configuration, all values are default, you can configure all the settings with available "
@@ -71,8 +71,8 @@ class UserLoop(cmd.Cmd):
         if args in self.macros or args.isdigit():
             self.period = args
             loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
-            newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, loc)
-            p = Popen(['sed', '-i', "s/.*BackupTully.*/{}/g".format(newEntry), "/etc/anacrontab"])
+            newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, loc)
+            p = Popen(['sed', '-i', "s/.*Backupify.*/{}/g".format(newEntry), "/etc/anacrontab"])
             p.wait()
             self.save()
         else:
@@ -88,7 +88,7 @@ class UserLoop(cmd.Cmd):
         else:
             print("Current Backup Period: {}".format(self.period))
         print("Destination folder {}".format(self.destination))
-        print("Current Backup targets are:", end=" ")
+        print("Current Backup targets are:", end="")
         for path in self.targets:
             print(path, end=" ")
         print()
@@ -133,15 +133,17 @@ class UserLoop(cmd.Cmd):
         """Method for saving current configuration"""
         paths = ""
         for path in self.targets:
+            if not path:
+                continue
             paths += path + " "
-        with open("btConf.json", "w") as conf:
+        with open("backupifyConf.json", "w") as conf:
             data = {"period": self.period, "latest": self.latest, "count": self.count, "destination": self.destination,
                     "targets": paths[:-1]}
             json.dump(data, conf, indent=2)
 
     def load(self):
         """Method for loading current configuration from persistent storage"""
-        with open("btConf.json", "r") as conf:
+        with open("backupifyConf.json", "r") as conf:
             data = json.load(conf)
             self.period = data["period"]
             self.latest = data["latest"]
@@ -155,28 +157,28 @@ class UserLoop(cmd.Cmd):
         exit(0)
 
     def do_documentation(self, args=None):
-        print("\tBackupTully {}".format(VERSION))
+        print("\nBackupify {}".format(VERSION))
         print("==================================\n")
-        print("BackupTully is a Command Line Interface Application for getting periodic backups of specific targets.")
+        print("Backupify is a Command Line Interface Application for getting periodic backups of specific targets.")
         print("It provides an Interpreter for user to configure app settings via various commands (type help to see "
               "them)")
         print("\nConfigurable settings are:\n\t\tBackup Targets(adding and removing them)\n"
               "\t\tBackup destination\n\t\tBackup period\n\t\tConfigurations then saved into a Json file named "
-              "'btConf.json' and loaded/saved from there.\n")
-        print("BackupTully uses 'anacron' for scheduling periodic backups. 'anacron' is a program that executes "
+              "'backupifyConf.json' and loaded/saved from there.\n")
+        print("Backupify uses 'anacron' for scheduling periodic backups. 'anacron' is a program that executes "
               "commands periodically, with a frequency specified in 'days'. Unlike 'cron' it does not assume that the "
               "machine is running continuously (for more information visit manual page of 'anacron'). Thanks to this"
-              "feature of anacron, BackupTully is able to get backups periodically no matter machine runs or not.\n")
-        print("Since anacrontab needs to be configured only with sudo privileges, BackupTully needs to be executed "
+              "feature of anacron, Backupify is able to get backups periodically no matter machine runs or not.\n")
+        print("Since anacrontab needs to be configured only with sudo privileges, Backupify needs to be executed "
               "with sudo.\n")
         print("'anacron' is provided with 'backupScript' and whenever anacron executes it, script reads the current "
-              "configuration from 'btConf.json' file compresses all targets into a '.tgz' with timestamp"
+              "configuration from 'backupifyConf.json' file compresses all targets into a '.tgz' with timestamp"
               " into configured destination. Therefore it is "
-              "VITAL for btConf.json to exist and somehow if it gets deleted it will be reproduced with default values "
-              "and all configuration will be discarded.\n")
-        print("All backup and error logs will be reported into log file named 'bt.log' ('anacron' also logs activity "
-              "to /var/log/syslog, so logs can also be seen from there).\n")
-        print("Visit for Original Repository github.com/ysyesilyurt/BackupTully\nMIT © ysyesilyurt 2019\n")
+              "VITAL for backupifyConf.json to exist and somehow if it gets deleted it will be reproduced with default "
+              "values and all configuration will be discarded.\n")
+        print("All backup and error logs will be reported into log file named 'backupify.log' ('anacron' also logs "
+              "activity to /var/log/syslog, so logs can also be seen from there).\n")
+        print("Visit for Original Repository github.com/ysyesilyurt/Backupify\nMIT © ysyesilyurt 2019\n")
 
     def do_help(self, arg):
         print("\tAvailable Commands")
@@ -196,15 +198,15 @@ class UserLoop(cmd.Cmd):
         print("\t\t\tBackup period needs to be a digit corresponding to once in <digit> days or one of "
               "@daily, @weekly, @monthly macros.\n\t\t\tSee manual page of 'anacron' for further information.")
         print("\t\t\tDefault value -- @daily")
-        print("\nTo gather further information about BackupTully type documentation "
-              "or visit github.com/ysyesilyurt/BackupTully\n")
+        print("\nTo gather further information about Backupify type documentation "
+              "or visit github.com/ysyesilyurt/Backupify\n")
 
 
 if __name__ == "__main__":
     try:
         if os.geteuid():
-            print("It seems like you did not run BackupTully with sudo privileges.\nTo be able to set backup period"
-                  " to anacron, BackupTully needs sudo privileges. Please run BackupTully again with sudo.")
+            print("It seems like you did not run Backupify with sudo privileges.\nTo be able to set backup period"
+                  " to anacron, Backupify needs sudo privileges. Please run Backupify again with sudo.")
             exit(1)
         else:
             UserLoop().cmdloop()
@@ -213,7 +215,7 @@ if __name__ == "__main__":
         exit(1)
     except Exception as e:
         print("An error occured, logging to logfile..")
-        with open("bt.log", "a") as log:
-            log.write("Error from backupTully.py at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) +
+        with open("backupify.log", "a") as log:
+            log.write("Error from backupify.py at {}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")) +
                       ": " + str(e) + '\n')
         exit(2)
