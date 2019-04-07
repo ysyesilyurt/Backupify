@@ -23,13 +23,20 @@ if __name__ == "__main__":
         if TARGETS:
             today = datetime.date.today().strftime("%Y-%m-%d")
             p = Popen(['tar', '-czPf', "{0}BACKUPIFY~{1}.tgz".format(DESTINATION, today), TARGETS])
-            p.wait()
-            confData["latest"] = today
-            confData["count"] += 1
-            save(confData)
-            with open("backupify.log", "a") as log:
-                log.write("Backup taken at {0} to {1}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
-                                                              DESTINATION) + '\n')
+            retCode = p.wait()
+            if not retCode:
+                confData["latest"] = today
+                confData["count"] += 1
+                save(confData)
+                with open("backupify.log", "a") as log:
+                    log.write("Backup taken at {0} to {1}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
+                                                                  DESTINATION) + '\n')
+            else:
+                with open("backupify.log", "a") as log:
+                    log.write("tar error from backupScript.py at {}".format(
+                        datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")) + " tar returned {} "
+                                                                                 "code".format(retCode) + '\n')
+                exit(2)
         exit(0)
     except Exception as e:
         with open("backupify.log", "a") as log:
