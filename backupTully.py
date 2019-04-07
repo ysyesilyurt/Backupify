@@ -100,6 +100,8 @@ class UserLoop(cmd.Cmd):
             searchPath = ""
             flag = False
             for path in hierarchy:
+                if not path:
+                    continue
                 searchPath += path + '/'
                 if searchPath in self.targets or searchPath[:-1] in self.targets:
                     flag = True
