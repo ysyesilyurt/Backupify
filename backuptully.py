@@ -4,13 +4,10 @@ import datetime
 import json
 import os
 import re
-import sys
 from subprocess import Popen, call
 
-# TODO: Inform user about default values
-# TODO: Make a colored CLI -- user friendly + Update README
-# TODO: Establish an autocompleting structure in rm and add
-# TODO: Improve functionality?
+
+VERSION = "1.0"
 
 
 class UserLoop(cmd.Cmd):
@@ -18,7 +15,8 @@ class UserLoop(cmd.Cmd):
     def __init__(self):
         super(UserLoop, self).__init__()
         self.prompt = "> "
-        self.intro = "Welcome to BackupTully!\nPlease type help to see available commands."
+        self.intro = "Welcome to BackupTully {}!\nPlease type help or ? to see available commands and their " \
+                     "settings.\nType documentation for further information about BackupTully".format(VERSION)
         self.macros = {"@daily", "@weekly", "@monthly"}
         if os.path.exists("btConf.json"):
             self.load()
@@ -27,6 +25,7 @@ class UserLoop(cmd.Cmd):
             self.d = "{}/backups/".format(os.environ['HOME'])
             self.targets = set()
             self.latest = None
+            self.count = 0
             self.do_save()
             if not os.path.isdir(self.d):
                 os.makedirs(self.d)
@@ -64,16 +63,11 @@ class UserLoop(cmd.Cmd):
         else:
             print("Please enter a valid Backup Period (in days)")
 
-    def do_help(self, arg):
-        # TODO: Implement this method
-        pass
-
     def do_list(self, args=None):
         """Method for listing current configuration"""
         if self.latest:
             print("Last backup was at {}".format(self.latest))
-        else:
-            print("No backup has been taken yet")
+        print("{} backups were taken up to now".format(self.count))
         if self.bp not in self.macros:
             print("Current Backup Period: Once in {} days".format(self.bp))
         else:
@@ -125,7 +119,7 @@ class UserLoop(cmd.Cmd):
         for path in self.targets:
             paths += path + " "
         with open("btConf.json", "w") as conf:
-            data = {"bp": self.bp, "latest": self.latest, "d": self.d, "targets": paths[:-1]}
+            data = {"bp": self.bp, "latest": self.latest, "count": self.count, "d": self.d, "targets": paths[:-1]}
             json.dump(data, conf, indent=2)
 
     def load(self):
@@ -134,6 +128,7 @@ class UserLoop(cmd.Cmd):
             data = json.load(conf)
             self.bp = data["bp"]
             self.latest = data["latest"]
+            self.count = data["count"]
             self.d = data["d"]
             paths = data["targets"]
             self.targets = set(paths.split(" "))
@@ -148,6 +143,36 @@ class UserLoop(cmd.Cmd):
         print()
         exit(0)
 
+    def do_documentation(self, arg):
+        print("\n\tBackupTully {}".format(VERSION))
+        print("====================================")
+        ##
+        print("Visit for Original Repository github.com/ysyesilyurt/BackupTully")
+
+    def do_help(self, arg):
+        print("\n\tAvailable Commands")
+        print("====================================")
+        print("\nadd\t--\tAdds new path(target) to backup list")
+        print("\t\tIf any parent directory of given target is present in backup list already, then new path "
+              "will not be added to backup list.")
+        print("\nrm\t--\tRemoves an existing path(target) from backup list")
+        print("\t\tWildcard '*' removes all existing paths.")
+        print("\nlist\t--\tLists current configuration")
+        print("\nsave\t--\tSaves unsaved changes in the configuration to persistent storage.")
+        print("\t\tIf user has unsaved changes and an exit command is entered, then user will be prompted "
+              "if he/she wants to save the unsaved changes in configuration.")
+        print("\nsetDestination\t--\tSets the new destination folder for backups")
+        print("\t\t\tMoves all old backups from old destination directory to new one and then removes the old.")
+        print("\t\t\tIf destination directory with given name does not exist it creates an empty directory "
+              "with given name.")
+        print("\t\t\tDefault value -- {}".format("{}/backups/".format(os.environ['HOME'])))
+        print("\nsetPeriod\t--\tSets the new backup period for backups")
+        print("\t\t\tBackup period needs to be a digit corresponding to once in <digit> days or one of "
+              "@daily, @weekly, @monthly macros.\n\t\t\tSee manual page of 'anacron' for further information.")
+        print("\t\t\tDefault value -- @daily")
+        print("\nTo gather further information about BackupTully type documentation "
+              "or visit github.com/ysyesilyurt/BackupTully\n")
+
 
 if __name__ == "__main__":
     try:
@@ -159,9 +184,10 @@ if __name__ == "__main__":
             UserLoop().cmdloop()
     except KeyboardInterrupt:
         print()
-        sys.exit(1)
+        exit(1)
     except Exception as e:
+        print("An error occured, logging to logfile..")
         with open("btError.log", "a") as errFile:
-            errFile.write("From backuptully at {}".format(datetime.date.today().strftime("%Y-%m-%d")) + ": "
+            errFile.write("From backuptully at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) + ": "
                           + str(e) + '\n')
         exit(2)

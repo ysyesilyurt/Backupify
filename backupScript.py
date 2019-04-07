@@ -20,15 +20,18 @@ if __name__ == "__main__":
         confData = load()
         DESTINATION = confData["d"]
         TARGETS = confData["targets"]
-        today = datetime.date.today().strftime("%Y-%m-%d")
-        p = Popen(['tar', '-czPf', "{0}BT~{1}.tgz".format(DESTINATION, today), TARGETS])
-        p.wait()
-        confData["latest"] = today
-        save(confData)
+        if TARGETS:
+            today = datetime.date.today().strftime("%Y-%m-%d")
+            p = Popen(['tar', '-czPf', "{0}BT~{1}.tgz".format(DESTINATION, today), TARGETS])
+            p.wait()
+            confData["latest"] = today
+            confData["count"] += 1
+            save(confData)
         exit(0)
     except Exception as e:
+        print("An error occured, logging to logfile..")
         with open("btError.log", "a") as errFile:
-            errFile.write("From backupScript at {}".format(datetime.date.today().strftime("%Y-%m-%d")) + ": "
+            errFile.write("From backuptully at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) + ": "
                           + str(e) + '\n')
         exit(2)
 
