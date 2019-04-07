@@ -39,6 +39,8 @@ class UserLoop(cmd.Cmd):
                         newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, os.getcwd() + "/backupScript.py")
                         anacron.write(newEntry + '\n')
             self.save()
+            print("First time configuration, all values are default, you can configure all the settings with available "
+                  "commands.")
 
     def emptyline(self):
         pass
@@ -154,24 +156,24 @@ class UserLoop(cmd.Cmd):
         print("\tBackupTully {}".format(VERSION))
         print("==================================\n")
         print("BackupTully is a Command Line Interface Application for getting periodic backups of specific targets.")
-        print("It provides an CLI for user to configure app settings via various commands (type help to see them)")
+        print("It provides an Interpreter for user to configure app settings via various commands (type help to see "
+              "them)")
         print("\nConfigurable settings are:\n\t\tBackup Targets(adding and removing them)\n"
               "\t\tBackup destination\n\t\tBackup period\n\t\tConfigurations then saved into a Json file named "
               "'btConf.json' and loaded/saved from there.\n")
         print("BackupTully uses 'anacron' for scheduling periodic backups. 'anacron' is a program that executes "
               "commands periodically, with a frequency specified in 'days'. Unlike 'cron' it does not assume that the "
               "machine is running continuously (for more information visit manual page of 'anacron'). Thanks to this"
-              "feature of anacron, BackupTully takes backups periodically no matter machine runs or not.\n")
+              "feature of anacron, BackupTully is able to get backups periodically no matter machine runs or not.\n")
         print("Since anacrontab needs to be configured only with sudo privileges, BackupTully needs to be executed "
               "with sudo.\n")
         print("'anacron' is provided with 'backupScript' and whenever anacron executes it, script reads the current "
-              "configuration from 'btConf'.json file and gets the backup to configured destination. Therefore it is "
-              "VITAL for btConf.json to exist, if it gets deleted it will reproduced with default values and all "
-              "configuration will be discarded.\n")
-        print("All backup logs will be reported into log file named 'bt.log'. "
-              "If any exceptions happen during the execution of 'backuptully' or 'backupScript' modules they will "
-              "also be reported to 'bt.log'. ('anacron' also logs activity to /var/log/syslog, so logs can also be seen"
-              " from there)\n")
+              "configuration from 'btConf.json' file compresses all targets into a '.tgz' with timestamp"
+              " into configured destination. Therefore it is "
+              "VITAL for btConf.json to exist and somehow if it gets deleted it will be reproduced with default values "
+              "and all configuration will be discarded.\n")
+        print("All backup and error logs will be reported into log file named 'bt.log' ('anacron' also logs activity "
+              "to /var/log/syslog, so logs can also be seen from there).\n")
         print("Visit for Original Repository github.com/ysyesilyurt/BackupTully\nMIT © ysyesilyurt 2019\n")
 
     def do_help(self, arg):
@@ -210,6 +212,6 @@ if __name__ == "__main__":
     except Exception as e:
         print("An error occured, logging to logfile..")
         with open("bt.log", "a") as log:
-            log.write("Error from backuptully.py at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) +
+            log.write("Error from backupTully.py at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) +
                       ": " + str(e) + '\n')
         exit(2)
