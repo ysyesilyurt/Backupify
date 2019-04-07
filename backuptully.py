@@ -14,65 +14,78 @@ class UserLoop(cmd.Cmd):
     """Class for dynamic interpreter of user"""
     def __init__(self):
         super(UserLoop, self).__init__()
-        self.prompt = "> "
+        self.prompt = "BackupTully> "
         self.intro = "Welcome to BackupTully {}!\nPlease type help or ? to see available commands and their " \
                      "settings.\nType documentation for further information about BackupTully".format(VERSION)
         self.macros = {"@daily", "@weekly", "@monthly"}
         if os.path.exists("btConf.json"):
             self.load()
         else:
-            self.bp = "@daily"
-            self.d = "{}/backups/".format(os.environ['HOME'])
+            self.period = "@daily"
+            self.destination = "{}/backups/".format(os.environ['HOME'])
             self.targets = set()
             self.latest = None
             self.count = 0
-            self.do_save()
-            if not os.path.isdir(self.d):
-                os.makedirs(self.d)
-            newEntry = "{0}\t0\tBackupTully\t{1}".format(self.bp, os.getcwd() + "/backupScript.py")
-            with open("/etc/anacrontab", "a") as anacron:
-                anacron.write(newEntry + '\n')
-        self.updated = False
+            if not os.path.isdir(self.destination):
+                os.makedirs(self.destination)
+            with open("/etc/anacrontab", "r") as tab:
+                if "BackupTully" in tab.read():
+                    loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
+                    newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, loc)
+                    p = Popen(['sed', '-i', "s/.*BackupTully.*/{}/g".format(newEntry), "/etc/anacrontab"])
+                    p.wait()
+                else:
+                    with open("/etc/anacrontab", "a") as anacron:
+                        newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, os.getcwd() + "/backupScript.py")
+                        anacron.write(newEntry + '\n')
+            self.save()
 
     def emptyline(self):
         pass
 
     def do_setDestination(self, args):
         """Method for setting destination folder"""
-        temp = self.d
-        if args[-1] != '/':
-            args += '/'
-        self.d = args
-        self.updated = True
-        if not os.path.isdir(args):
-            os.makedirs(args)
-        call("mv {0}* {1}".format(temp, args), shell=True)
-        os.rmdir(temp)
-        print("Changed destination folder to {0} and successfully moved all backups under {1} to "
-              "{0}".format(args, temp))
+        if args:
+            if not os.path.isdir(args):
+                print("No direcrory named {} seems to exist. Do you create it and proceed? [Y/n]".format(args), end=" ")
+                proceed = str(input())
+                if not(proceed == "" or proceed == "Y" or proceed == "y"):
+                    return
+                os.makedirs(args)
+            temp = self.destination
+            if args[-1] != '/':
+                args += '/'
+            self.destination = args
+            call("mv {0}* {1}".format(temp, args), shell=True)
+            os.rmdir(temp)
+            self.save()
+            print("Changed destination folder to {0} and successfully moved all backups under {1} to "
+                  "{0}".format(args, temp))
+        else:
+            print("Please enter a valid path.")
 
     def do_setPeriod(self, args):
         """Method for setting backup period for backup script"""
         if args in self.macros or args.isdigit():
-            self.bp = args
-            self.updated = True
+            self.period = args
             loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
-            newEntry = "{0}\t0\tBackupTully\t{1}".format(self.bp, loc)
+            newEntry = "{0}\t0\tBackupTully\t{1}".format(self.period, loc)
             p = Popen(['sed', '-i', "s/.*BackupTully.*/{}/g".format(newEntry), "/etc/anacrontab"])
             p.wait()
+            self.save()
         else:
-            print("Please enter a valid Backup Period (in days)")
+            print("Please enter a valid Backup Period (in days).")
 
     def do_list(self, args=None):
         """Method for listing current configuration"""
         if self.latest:
             print("Last backup was at {}".format(self.latest))
         print("{} backups were taken up to now".format(self.count))
-        if self.bp not in self.macros:
-            print("Current Backup Period: Once in {} days".format(self.bp))
+        if self.period not in self.macros:
+            print("Current Backup Period: Once in {} days".format(self.period))
         else:
-            print("Current Backup Period: {}".format(self.bp))
-        print("Destination folder {}".format(self.d))
+            print("Current Backup Period: {}".format(self.period))
+        print("Destination folder {}".format(self.destination))
         print("Current Backup targets are:", end=" ")
         for path in self.targets:
             print(path, end=" ")
@@ -91,7 +104,7 @@ class UserLoop(cmd.Cmd):
                     break
             if not flag:
                 self.targets.add(args)
-                self.updated = True
+                self.save()
             else:
                 print("A parent directory named {} is already in targets, so this path will not be added to "
                       "targets.".format(searchPath))
@@ -102,71 +115,80 @@ class UserLoop(cmd.Cmd):
         """Method for removing target from targetList"""
         if args in self.targets:
             self.targets.remove(args)
-            self.updated = True
+            self.save()
         elif args + '/' in self.targets:
             self.targets.remove(args + '/')
-            self.updated = True
+            self.save()
         elif args == '*':
             self.targets = set()
-            self.updated = True
+            self.save()
         else:
             print("No such file or directory named {} in current targetList".format(args))
 
-    def do_save(self, args=None):
+    def save(self, args=None):
         """Method for saving current configuration"""
-        self.updated = False
         paths = ""
         for path in self.targets:
             paths += path + " "
         with open("btConf.json", "w") as conf:
-            data = {"bp": self.bp, "latest": self.latest, "count": self.count, "d": self.d, "targets": paths[:-1]}
+            data = {"period": self.period, "latest": self.latest, "count": self.count, "destination": self.destination,
+                    "targets": paths[:-1]}
             json.dump(data, conf, indent=2)
 
     def load(self):
         """Method for loading current configuration from persistent storage"""
         with open("btConf.json", "r") as conf:
             data = json.load(conf)
-            self.bp = data["bp"]
+            self.period = data["period"]
             self.latest = data["latest"]
             self.count = data["count"]
-            self.d = data["d"]
+            self.destination = data["destination"]
             paths = data["targets"]
             self.targets = set(paths.split(" "))
 
     def do_EOF(self, args=None):
-        if self.updated:
-            print("You have unsaved changes in your configuration, do you want to save them before you proceed? [Y/n]",
-                  end=" ")
-            proceed = str(input())
-            if proceed == "" or proceed == "Y" or proceed == "y":
-                self.do_save(args)
         print()
         exit(0)
 
-    def do_documentation(self, arg):
-        print("\n\tBackupTully {}".format(VERSION))
-        print("====================================")
-        ##
-        print("Visit for Original Repository github.com/ysyesilyurt/BackupTully")
+    def do_documentation(self, args=None):
+        print("\tBackupTully {}".format(VERSION))
+        print("==================================\n")
+        print("BackupTully is a Command Line Interface Application for getting periodic backups of specific targets.")
+        print("It provides an CLI for user to configure app settings via various commands (type help to see them)")
+        print("\nConfigurable settings are:\n\t\tBackup Targets(adding and removing them)\n"
+              "\t\tBackup destination\n\t\tBackup period\n\t\tConfigurations then saved into a Json file named "
+              "'btConf.json' and loaded/saved from there.\n")
+        print("BackupTully uses 'anacron' for scheduling periodic backups. 'anacron' is a program that executes "
+              "commands periodically, with a frequency specified in 'days'. Unlike 'cron' it does not assume that the "
+              "machine is running continuously (for more information visit manual page of 'anacron'). Thanks to this"
+              "feature of anacron, BackupTully takes backups periodically no matter machine runs or not.\n")
+        print("Since anacrontab needs to be configured only with sudo privileges, BackupTully needs to be executed "
+              "with sudo.\n")
+        print("'anacron' is provided with 'backupScript' and whenever anacron executes it, script reads the current "
+              "configuration from 'btConf'.json file and gets the backup to configured destination. Therefore it is "
+              "VITAL for btConf.json to exist, if it gets deleted it will reproduced with default values and all "
+              "configuration will be discarded.\n")
+        print("All backup logs will be reported into log file named 'bt.log'. "
+              "If any exceptions happen during the execution of 'backuptully' or 'backupScript' modules they will "
+              "also be reported to 'bt.log'. ('anacron' also logs activity to /var/log/syslog, so logs can also be seen"
+              " from there)\n")
+        print("Visit for Original Repository github.com/ysyesilyurt/BackupTully\nMIT © ysyesilyurt 2019\n")
 
     def do_help(self, arg):
-        print("\n\tAvailable Commands")
+        print("\tAvailable Commands")
         print("====================================")
-        print("\nadd\t--\tAdds new path(target) to backup list")
+        print("\nadd\t--\tAdds new path(target) to backup list.")
         print("\t\tIf any parent directory of given target is present in backup list already, then new path "
               "will not be added to backup list.")
-        print("\nrm\t--\tRemoves an existing path(target) from backup list")
+        print("\nrm\t--\tRemoves an existing path(target) from backup list.")
         print("\t\tWildcard '*' removes all existing paths.")
-        print("\nlist\t--\tLists current configuration")
-        print("\nsave\t--\tSaves unsaved changes in the configuration to persistent storage.")
-        print("\t\tIf user has unsaved changes and an exit command is entered, then user will be prompted "
-              "if he/she wants to save the unsaved changes in configuration.")
-        print("\nsetDestination\t--\tSets the new destination folder for backups")
+        print("\nlist\t--\tLists current configuration and general information about old backups.")
+        print("\nsetDestination\t--\tSets the new destination folder for backups.")
         print("\t\t\tMoves all old backups from old destination directory to new one and then removes the old.")
         print("\t\t\tIf destination directory with given name does not exist it creates an empty directory "
               "with given name.")
         print("\t\t\tDefault value -- {}".format("{}/backups/".format(os.environ['HOME'])))
-        print("\nsetPeriod\t--\tSets the new backup period for backups")
+        print("\nsetPeriod\t--\tSets the new backup period for backups.")
         print("\t\t\tBackup period needs to be a digit corresponding to once in <digit> days or one of "
               "@daily, @weekly, @monthly macros.\n\t\t\tSee manual page of 'anacron' for further information.")
         print("\t\t\tDefault value -- @daily")
@@ -187,7 +209,7 @@ if __name__ == "__main__":
         exit(1)
     except Exception as e:
         print("An error occured, logging to logfile..")
-        with open("btError.log", "a") as errFile:
-            errFile.write("From backuptully at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) + ": "
-                          + str(e) + '\n')
+        with open("bt.log", "a") as log:
+            log.write("Error from backuptully.py at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) +
+                      ": " + str(e) + '\n')
         exit(2)
