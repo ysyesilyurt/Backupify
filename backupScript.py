@@ -18,7 +18,7 @@ def save(data):
 if __name__ == "__main__":
     try:
         confData = load()
-        DESTINATION = confData["d"]
+        DESTINATION = confData["destination"]
         TARGETS = confData["targets"]
         if TARGETS:
             today = datetime.date.today().strftime("%Y-%m-%d")
@@ -27,12 +27,14 @@ if __name__ == "__main__":
             confData["latest"] = today
             confData["count"] += 1
             save(confData)
+            with open("bt.log", "a") as log:
+                log.write("Backup taken at {0} to {1}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S"),
+                                                              DESTINATION) + '\n')
         exit(0)
     except Exception as e:
-        print("An error occured, logging to logfile..")
-        with open("btError.log", "a") as errFile:
-            errFile.write("From backuptully at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) + ": "
-                          + str(e) + '\n')
+        with open("bt.log", "a") as log:
+            log.write("Error from backupScript.py at {}".format(datetime.datetime.now().strftime("%Y,%m,%d,%H,%M,%S")) +
+                      ": " + str(e) + '\n')
         exit(2)
 
 
