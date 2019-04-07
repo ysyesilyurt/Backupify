@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import cmd
+import datetime
 import json
 import os
+import re
 import sys
+from subprocess import Popen, call
 
 # TODO: Inform user about default values
-# TODO: Make a colored CLI -- user friendly
+# TODO: Make a colored CLI -- user friendly + Update README
 # TODO: Establish an autocompleting structure in rm and add
 # TODO: Improve functionality?
 
@@ -15,38 +18,49 @@ class UserLoop(cmd.Cmd):
     def __init__(self):
         super(UserLoop, self).__init__()
         self.prompt = "> "
-        self.intro = "Welcome to Backuptully!\nPlease type help to see available commands."
+        self.intro = "Welcome to BackupTully!\nPlease type help to see available commands."
         self.macros = {"@daily", "@weekly", "@monthly"}
         if os.path.exists("btConf.json"):
             self.load()
         else:
             self.bp = "@daily"
-            self.d = "{}/backups".format(os.environ['HOME'])
+            self.d = "{}/backups/".format(os.environ['HOME'])
             self.targets = set()
             self.latest = None
             self.do_save()
             if not os.path.isdir(self.d):
                 os.makedirs(self.d)
+            newEntry = "{0}\t0\tBackupTully\t{1}".format(self.bp, os.getcwd() + "/backupScript.py")
+            with open("/etc/anacrontab", "a") as anacron:
+                anacron.write(newEntry + '\n')
         self.updated = False
 
     def emptyline(self):
         pass
 
-    def do_SetDestination(self, args):
+    def do_setDestination(self, args):
         """Method for setting destination folder"""
-        # temp = self.d
+        temp = self.d
+        if args[-1] != '/':
+            args += '/'
         self.d = args
         self.updated = True
         if not os.path.isdir(args):
             os.makedirs(args)
-            # TODO: move old content
+        call("mv {0}* {1}".format(temp, args), shell=True)
+        os.rmdir(temp)
+        print("Changed destination folder to {0} and successfully moved all backups under {1} to "
+              "{0}".format(args, temp))
 
-    def do_SetBackupPeriod(self, args):
+    def do_setPeriod(self, args):
         """Method for setting backup period for backup script"""
         if args in self.macros or args.isdigit():
             self.bp = args
             self.updated = True
-            # TODO: Handle anacron
+            loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
+            newEntry = "{0}\t0\tBackupTully\t{1}".format(self.bp, loc)
+            p = Popen(['sed', '-i', "s/.*BackupTully.*/{}/g".format(newEntry), "/etc/anacrontab"])
+            p.wait()
         else:
             print("Please enter a valid Backup Period (in days)")
 
@@ -137,11 +151,17 @@ class UserLoop(cmd.Cmd):
 
 if __name__ == "__main__":
     try:
-        UserLoop().cmdloop()
+        if os.geteuid():
+            print("It seems like you did not run BackupTully with sudo privileges.\nTo be able to set backup period"
+                  " to anacron, BackupTully needs sudo privileges. Please run BackupTully again with sudo.")
+            exit(1)
+        else:
+            UserLoop().cmdloop()
     except KeyboardInterrupt:
         print()
         sys.exit(1)
     except Exception as e:
-        with open("btError.log", "w+") as errFile:
-            print(e)
+        with open("btError.log", "a") as errFile:
+            errFile.write("From backuptully at {}".format(datetime.date.today().strftime("%Y-%m-%d")) + ": "
+                          + str(e) + '\n')
         exit(2)

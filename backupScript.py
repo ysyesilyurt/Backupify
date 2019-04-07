@@ -21,16 +21,15 @@ if __name__ == "__main__":
         DESTINATION = confData["d"]
         TARGETS = confData["targets"]
         today = datetime.date.today().strftime("%Y-%m-%d")
-        if DESTINATION[-1] != '/':
-            DESTINATION += '/'
         p = Popen(['tar', '-czPf', "{0}BT~{1}.tgz".format(DESTINATION, today), TARGETS])
         p.wait()
         confData["latest"] = today
         save(confData)
         exit(0)
     except Exception as e:
-        with open("btError.log", "w+") as errFile:
-            print(e)
+        with open("btError.log", "a") as errFile:
+            errFile.write("From backupScript at {}".format(datetime.date.today().strftime("%Y-%m-%d")) + ": "
+                          + str(e) + '\n')
         exit(2)
 
 
