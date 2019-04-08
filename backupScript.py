@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 import datetime
 import json
+import sys
 from subprocess import Popen
 
 
 def load():
-    with open("backupifyConf.json", "r") as conf:
+    with open(sys.path[0] + "/backupifyConf.json", "r") as conf:
         data = json.load(conf)
     return data
 
 
 def save(data):
-    with open("backupifyConf.json", "w") as conf:
+    with open(sys.path[0] + "/backupifyConf.json", "w") as conf:
         json.dump(data, conf, indent=2)
 
 
@@ -28,18 +29,18 @@ if __name__ == "__main__":
                 confData["latest"] = today
                 confData["count"] += 1
                 save(confData)
-                with open("backupify.log", "a") as log:
+                with open(sys.path[0] + "/backupify.log", "a") as log:
                     log.write("Backup taken at {0} to {1}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
                                                                   DESTINATION) + '\n')
             else:
-                with open("backupify.log", "a") as log:
+                with open(sys.path[0] + "/backupify.log", "a") as log:
                     log.write("tar error from backupScript.py at {}".format(
                         datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")) + " tar returned {} "
                                                                                  "code".format(retCode) + '\n')
                 exit(2)
         exit(0)
     except Exception as e:
-        with open("backupify.log", "a") as log:
+        with open(sys.path[0] + "/backupify.log", "a") as log:
             log.write("Error from backupScript.py at {}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")) +
                       ": " + str(e) + '\n')
         exit(2)

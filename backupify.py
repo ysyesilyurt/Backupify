@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import re
+import sys
 from subprocess import Popen, call
 
 
@@ -18,7 +19,7 @@ class UserLoop(cmd.Cmd):
         self.intro = "Welcome to Backupify {}!\nPlease type help or ? to see available commands and their " \
                      "settings.\nType documentation for further information about Backupify".format(VERSION)
         self.macros = {"@daily", "@weekly", "@monthly"}
-        if os.path.exists("backupifyConf.json"):
+        if os.path.exists(sys.path[0] + "/backupifyConf.json"):
             self.load()
         else:
             self.period = "@daily"
@@ -30,13 +31,13 @@ class UserLoop(cmd.Cmd):
                 os.makedirs(self.destination)
             with open("/etc/anacrontab", "r") as tab:
                 if "Backupify" in tab.read():
-                    loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
+                    loc = re.sub("/", "\\/", sys.path[0] + "/backupScript.py")
                     newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, loc)
                     p = Popen(['sed', '-i', "s/.*Backupify.*/{}/g".format(newEntry), "/etc/anacrontab"])
                     p.wait()
                 else:
                     with open("/etc/anacrontab", "a") as anacron:
-                        newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, os.getcwd() + "/backupScript.py")
+                        newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, sys.path[0] + "/backupScript.py")
                         anacron.write(newEntry + '\n')
             self.save()
             print("First time configuration, all values are default, you can configure all the settings with available "
@@ -70,7 +71,7 @@ class UserLoop(cmd.Cmd):
         """Method for setting backup period for backup script"""
         if args in self.macros or args.isdigit():
             self.period = args
-            loc = re.sub("/", "\\/", os.getcwd() + "/backupScript.py")
+            loc = re.sub("/", "\\/", sys.path[0] + "/backupScript.py")
             newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, loc)
             p = Popen(['sed', '-i', "s/.*Backupify.*/{}/g".format(newEntry), "/etc/anacrontab"])
             p.wait()
@@ -136,14 +137,14 @@ class UserLoop(cmd.Cmd):
             if not path:
                 continue
             paths += path + " "
-        with open("backupifyConf.json", "w") as conf:
+        with open(sys.path[0] + "/backupifyConf.json", "w") as conf:
             data = {"period": self.period, "latest": self.latest, "count": self.count, "destination": self.destination,
                     "targets": paths[:-1]}
             json.dump(data, conf, indent=2)
 
     def load(self):
         """Method for loading current configuration from persistent storage"""
-        with open("backupifyConf.json", "r") as conf:
+        with open(sys.path[0] + "/backupifyConf.json", "r") as conf:
             data = json.load(conf)
             self.period = data["period"]
             self.latest = data["latest"]
@@ -215,7 +216,7 @@ if __name__ == "__main__":
         exit(1)
     except Exception as e:
         print("An error occured, logging to logfile..")
-        with open("backupify.log", "a") as log:
+        with open(sys.path[0] + "/backupify.log", "a") as log:
             log.write("Error from backupify.py at {}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")) +
                       ": " + str(e) + '\n')
         exit(2)
