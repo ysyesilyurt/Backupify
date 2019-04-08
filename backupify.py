@@ -18,11 +18,11 @@ class UserLoop(cmd.Cmd):
         self.prompt = "Backupify> "
         self.intro = "Welcome to Backupify {}!\nPlease type help or ? to see available commands and their " \
                      "settings.\nType documentation for further information about Backupify".format(VERSION)
-        self.macros = {"@daily", "@weekly", "@monthly"}
+        self.macros = {"@daily": 1, "@weekly": 7, "@monthly": "@monthly"}
         if os.path.exists(sys.path[0] + "/backupifyConf.json"):
             self.load()
         else:
-            self.period = "@daily"
+            self.period = 1
             self.destination = "{}/backups/".format(os.environ['HOME'])
             self.targets = set()
             self.latest = None
@@ -70,6 +70,8 @@ class UserLoop(cmd.Cmd):
     def do_setPeriod(self, args):
         """Method for setting backup period for backup script"""
         if args in self.macros or args.isdigit():
+            if args != "@monthly" and int(args) in self.macros:
+                args = self.macros[args]
             self.period = args
             loc = re.sub("/", "\\/", sys.path[0] + "/backupScript.py")
             newEntry = "{0}\t0\tBackupify\t{1}".format(self.period, loc)
@@ -77,17 +79,21 @@ class UserLoop(cmd.Cmd):
             p.wait()
             self.save()
         else:
-            print("Please enter a valid Backup Period (in days).")
+            print("Please enter a valid Backup Period (in days) or enter a macro "
+                  "such as '@daily', '@weekly' or 'monthly'.")
 
     def do_list(self, args=None):
         """Method for listing current configuration"""
         if self.latest:
             print("Last backup was at {}".format(self.latest))
         print("{} backups were taken up to now".format(self.count))
-        if self.period not in self.macros:
+        valueMacros = {1: "@daily", 7: "@weekly"}
+        if self.period == "@monthly":
+            print("Current Backup Period: @monthly")
+        elif int(self.period) not in valueMacros:
             print("Current Backup Period: Once in {} days".format(self.period))
         else:
-            print("Current Backup Period: {}".format(self.period))
+            print("Current Backup Period: {}".format(valueMacros[int(self.period)]))
         print("Destination folder {}".format(self.destination))
         print("Current Backup targets are:", end="")
         for path in self.targets:
