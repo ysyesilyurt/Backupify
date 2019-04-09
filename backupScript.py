@@ -20,10 +20,10 @@ if __name__ == "__main__":
     try:
         confData = load()
         DESTINATION = confData["destination"]
-        TARGETS = confData["targets"]
+        TARGETS = confData["targets"].split(" ")
         if TARGETS:
             today = datetime.date.today().strftime("%Y-%m-%d")
-            p = Popen(['tar', '-czPf', "{0}BACKUPIFY~{1}.tgz".format(DESTINATION, today), TARGETS])
+            p = Popen(['tar', '-czPf', "{0}BACKUPIFY~{1}.tgz".format(DESTINATION, today)] + TARGETS)
             retCode = p.wait()
             if not retCode:
                 confData["latest"] = today
@@ -44,6 +44,3 @@ if __name__ == "__main__":
             log.write("Error from backupScript.py at {}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")) +
                       ": " + str(e) + '\n')
         exit(2)
-
-
-

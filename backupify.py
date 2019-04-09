@@ -7,7 +7,6 @@ import re
 import sys
 from subprocess import Popen, call
 
-
 VERSION = "1.0"
 
 
@@ -107,8 +106,6 @@ class UserLoop(cmd.Cmd):
             searchPath = ""
             flag = False
             for path in hierarchy:
-                if not path:
-                    continue
                 searchPath += path + '/'
                 if searchPath in self.targets or searchPath[:-1] in self.targets:
                     flag = True
