@@ -22,6 +22,7 @@ class UserLoop(cmd.Cmd):
             self.load()
         else:
             self.period = 1
+            self.arcPeriod = 7
             self.destination = "{}/backups/".format(os.environ['HOME'])
             self.targets = set()
             self.latest = None
@@ -58,11 +59,12 @@ class UserLoop(cmd.Cmd):
             if args[-1] != '/':
                 args += '/'
             self.destination = args
-            call("mv {0}* {1}".format(temp, args), shell=True)
-            os.rmdir(temp)
+            if self.count != 0:
+                call("mv {0}* {1}".format(temp, args), shell=True)
+                os.rmdir(temp)
+                print("Changed destination folder to {0} and successfully moved all backups under {1} to "
+                      "{0}".format(args, temp))
             self.save()
-            print("Changed destination folder to {0} and successfully moved all backups under {1} to "
-                  "{0}".format(args, temp))
         else:
             print("Please enter a valid path.")
 
@@ -79,7 +81,15 @@ class UserLoop(cmd.Cmd):
             self.save()
         else:
             print("Please enter a valid Backup Period (in days) or enter a macro "
-                  "such as '@daily', '@weekly' or 'monthly'.")
+                  "such as '@daily', '@weekly' or '@monthly'.")
+
+    def do_setArchivePeriod(self, args):
+        """Method for setting archive period (determination of keeping backups for last x days')"""
+        if args.isdigit():
+            self.arcPeriod = args
+            self.save()
+        else:
+            print("Please enter a valid Archive Period (in days).")
 
     def do_list(self, args=None):
         """Method for listing current configuration"""
@@ -93,8 +103,9 @@ class UserLoop(cmd.Cmd):
             print("Current Backup Period: Once in {} days".format(self.period))
         else:
             print("Current Backup Period: {}".format(valueMacros[int(self.period)]))
-        print("Destination folder {}".format(self.destination))
-        print("Current Backup targets are:", end="")
+        print("Current Archive Period: Keeping last {} days' backup".format(self.arcPeriod))
+        print("Destination folder: {}".format(self.destination))
+        print("Current Backup targets are:", end=" ")
         for path in self.targets:
             print(path, end=" ")
         print()
@@ -107,12 +118,22 @@ class UserLoop(cmd.Cmd):
             flag = False
             for path in hierarchy:
                 searchPath += path + '/'
-                if searchPath in self.targets or searchPath[:-1] in self.targets:
+                if searchPath in self.targets or (searchPath != '/' and searchPath[:-1] in self.targets):
                     flag = True
                     break
             if not flag:
-                self.targets.add(args)
+                newTargets = {args}
+                pathDelCount = 0
+                for path in self.targets:
+                    if not path.startswith(args):
+                        newTargets.add(path)
+                    else:
+                        pathDelCount += 1
+                self.targets = newTargets
                 self.save()
+                if pathDelCount != 0:
+                    print("{0} Subdirectories under {1} were in targets, since {1} is added to targets, "
+                          "the subfolders are deleted from the target list.".format(pathDelCount, args))
             else:
                 print("A parent directory named {} is already in targets, so this path will not be added to "
                       "targets.".format(searchPath))
@@ -141,8 +162,8 @@ class UserLoop(cmd.Cmd):
                 continue
             paths += path + " "
         with open(sys.path[0] + "/backupifyConf.json", "w") as conf:
-            data = {"period": self.period, "latest": self.latest, "count": self.count, "destination": self.destination,
-                    "targets": paths[:-1]}
+            data = {"period": self.period, "arcPeriod": self.arcPeriod, "latest": self.latest, "count": self.count,
+                    "destination": self.destination, "targets": paths[:-1]}
             json.dump(data, conf, indent=2)
 
     def load(self):
@@ -150,6 +171,7 @@ class UserLoop(cmd.Cmd):
         with open(sys.path[0] + "/backupifyConf.json", "r") as conf:
             data = json.load(conf)
             self.period = data["period"]
+            self.arcPeriod = data["arcPeriod"]
             self.latest = data["latest"]
             self.count = data["count"]
             self.destination = data["destination"]
@@ -202,6 +224,10 @@ class UserLoop(cmd.Cmd):
         print("\t\t\tBackup period needs to be a digit corresponding to once in <digit> days or one of "
               "@daily, @weekly, @monthly macros.\n\t\t\tSee manual page of 'anacron' for further information.")
         print("\t\t\tDefault value -- @daily")
+        print("\nsetArchivePeriod\t--\tSets the new archive period for backups,\n\t\t\t\tNamely determines period for "
+              "determining how many recent backups are to be kept in destination folder.")
+        print("\t\t\t\tBackup period needs to be a digit corresponding to once in <digit> days")
+        print("\t\t\t\tDefault value -- 7 (Keep last 1 week's backups)")
         print("\nTo gather further information about Backupify type documentation "
               "or visit github.com/ysyesilyurt/Backupify\n")
 
