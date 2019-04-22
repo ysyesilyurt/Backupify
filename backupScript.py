@@ -33,7 +33,7 @@ if __name__ == "__main__":
                 with open(sys.path[0] + "/backupify.log", "a") as log:
                     log.write("Backup taken at {0} to {1}".format(datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"),
                                                                   DESTINATION) + '\n')
-                if (confData["count"] % int(confData["arcPeriod"])) == 0:
+                if confData["count"] > int(confData["arcPeriod"]):
                     backups = os.listdir(DESTINATION)
                     backups = [DESTINATION + backup for backup in backups]
                     oldestBackup = min(backups, key=os.path.getctime)
