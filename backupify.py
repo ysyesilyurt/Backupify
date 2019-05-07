@@ -61,9 +61,9 @@ class UserLoop(cmd.Cmd):
             self.destination = args
             if self.count != 0:
                 call("mv {0}* {1}".format(temp, args), shell=True)
-                os.rmdir(temp)
                 print("Changed destination folder to {0} and successfully moved all backups under {1} to "
                       "{0}".format(args, temp))
+            os.rmdir(temp)
             self.save()
         else:
             print("Please enter a valid path.")
@@ -135,7 +135,7 @@ class UserLoop(cmd.Cmd):
                     print("{0} Subdirectories under {1} were in targets, since {1} is added to targets, "
                           "the subfolders are deleted from the target list.".format(pathDelCount, args))
             else:
-                print("A parent directory named {} is already in targets, so this path will not be added to "
+                print("A directory named {} is already in targets, so this path will not be added to "
                       "targets.".format(searchPath))
         else:
             print("No such file or directory named {}".format(args))
